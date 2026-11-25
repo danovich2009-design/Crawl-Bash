@@ -9,8 +9,3 @@ A turn-based terminal RPG and dungeon crawler written entirely in Bash script, f
 - **Dungeon Floors:** Explore randomized events (monsters, treasure chests, healing fountains, traps) and defeat Floor Guardians.
 - **Camp Shop & Save System:** Upgrade gear, buy potions, and save/load progress locally (`partida.sav`).
 
-## 🚀 How to Play
-```bash
-chmod +x Juego.sh
-./Juego.sh
-```
