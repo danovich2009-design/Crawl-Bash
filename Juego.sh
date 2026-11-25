@@ -1,183 +1,181 @@
 #!/usr/bin/env bash
 
-# ==========================================
-# Configuración y Colores
-# ==========================================
-ARCHIVO_GUARDADO="./partida.sav"
+# Configuration & Colors
 
-ROJO='\033[0;31m'
-VERDE='\033[0;32m'
-AMARILLO='\033[1;33m'
-AZUL='\033[0;36m'
-MORADO='\033[0;35m'
-SIN_COLOR='\033[0m'
+SAVE_FILE="./savegame.sav"
 
-# ==========================================
-# Variables del Jugador (Estado inicial)
-# ==========================================
-NOMBRE=""
-NIVEL=1
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+PURPLE='\033[0;35m'
+NC='\033[0m'
+
+
+# Player Variables (Initial State)
+
+NAME=""
+LEVEL=1
 XP=0
-XP_SIGUIENTE=100
+NEXT_XP=100
 HP=100
-HP_MAX=100
-ATAQUE=12
-DEFENSA=4
-ORO=30
-POCIONES=2
-ARMA="Daga oxidada"
-ARMADURA="Ropa de tela"
-PISO_MAZORRA=1
+MAX_HP=100
+ATTACK=12
+DEFENSE=4
+GOLD=30
+POTIONS=2
+WEAPON="Rusty Dagger"
+ARMOR="Cloth Tunic"
+DUNGEON_FLOOR=1
 
-# ==========================================
-# Sistema de Guardado y Carga
-# ==========================================
-guardar_partida() {
-    cat > "$ARCHIVO_GUARDADO" <<EOF
-NOMBRE="$NOMBRE"
-NIVEL=$NIVEL
+
+# Save & Load System
+
+    cat > "$SAVE_FILE" <<EOF
+NAME="$NAME"
+LEVEL=$LEVEL
 XP=$XP
-XP_SIGUIENTE=$XP_SIGUIENTE
+NEXT_XP=$NEXT_XP
 HP=$HP
-HP_MAX=$HP_MAX
-ATAQUE=$ATAQUE
-DEFENSA=$DEFENSA
-ORO=$ORO
-POCIONES=$POCIONES
-ARMA="$ARMA"
-ARMADURA="$ARMADURA"
-PISO_MAZORRA=$PISO_MAZORRA
+MAX_HP=$MAX_HP
+ATTACK=$ATTACK
+DEFENSE=$DEFENSE
+GOLD=$GOLD
+POTIONS=$POTIONS
+WEAPON="$WEAPON"
+ARMOR="$ARMOR"
+DUNGEON_FLOOR=$DUNGEON_FLOOR
 EOF
-    echo -e "${VERDE}✔ Partida guardada correctamente en $ARCHIVO_GUARDADO${SIN_COLOR}"
+    echo -e "${GREEN}✔ Game saved successfully to $SAVE_FILE${NC}"
 }
 
-cargar_partida() {
-    if [ -f "$ARCHIVO_GUARDADO" ]; then
+load_game() {
+    if [ -f "$SAVE_FILE" ]; then
         # shellcheck disable=SC1090
-        source "$ARCHIVO_GUARDADO"
-        echo -e "${VERDE}✔ ¡Bienvenido de nuevo, $NOMBRE!${SIN_COLOR}"
+        source "$SAVE_FILE"
+        echo -e "${GREEN}✔ Welcome back, $NAME!${NC}"
         sleep 1
         return 0
     else
-        echo -e "${ROJO}No se encontró ninguna partida guardada.${SIN_COLOR}"
+        echo -e "${RED}No saved game found.${NC}"
         sleep 1
         return 1
     fi
 }
 
-# ==========================================
-# Utilidades y Progresión
-# ==========================================
-pausar() {
+
+# Utilities & Progression
+
+pause() {
     echo ""
-    read -rp "Presiona [Enter] para continuar..."
+    read -rp "Press [Enter] to continue..."
 }
 
-mostrar_barra_hp() {
-    local actual=$1
-    local maximo=$2
-    local ancho=20
-    local llenos=$(( actual * ancho / maximo ))
-    [ $llenos -lt 0 ] && llenos=0
-    local vacios=$(( ancho - llenos ))
+show_hp_bar() {
+    local current=$1
+    local maximum=$2
+    local width=20
+    local filled=$(( current * width / maximum ))
+    [ $filled -lt 0 ] && filled=0
+    local empty=$(( width - filled ))
 
     printf "["
-    printf "%${llenos}s" | tr ' ' '#'
-    printf "%${vacios}s" | tr ' ' '-'
-    printf "] %d/%d HP" "$actual" "$maximo"
+    printf "%${filled}s" | tr ' ' '#'
+    printf "%${empty}s" | tr ' ' '-'
+    printf "] %d/%d HP" "$current" "$maximum"
 }
 
-subir_nivel() {
-    while [ "$XP" -ge "$XP_SIGUIENTE" ]; do
-        XP=$(( XP - XP_SIGUIENTE ))
-        NIVEL=$(( NIVEL + 1 ))
-        XP_SIGUIENTE=$(( XP_SIGUIENTE + 50 ))
-        HP_MAX=$(( HP_MAX + 20 ))
-        HP=$HP_MAX
-        ATAQUE=$(( ATAQUE + 4 ))
-        DEFENSA=$(( DEFENSA + 2 ))
+level_up() {
+    while [ "$XP" -ge "$NEXT_XP" ]; do
+        XP=$(( XP - NEXT_XP ))
+        LEVEL=$(( LEVEL + 1 ))
+        NEXT_XP=$(( NEXT_XP + 50 ))
+        MAX_HP=$(( MAX_HP + 20 ))
+        HP=$MAX_HP
+        ATTACK=$(( ATTACK + 4 ))
+        DEFENSE=$(( DEFENSE + 2 ))
 
-        echo -e "\n${AMARILLO}★ ¡SUBISTE AL NIVEL $NIVEL! ★${SIN_COLOR}"
-        echo "HP Máximo +20 | Ataque +4 | Defensa +2 (Salud restaurada)"
+        echo -e "\n${YELLOW}★ YOU REACHED LEVEL $LEVEL! ★${NC}"
+        echo "Max HP +20 | Attack +4 | Defense +2 (Health fully restored)"
     done
 }
 
-# ==========================================
-# Sistema de Combate por Turnos
-# ==========================================
-iniciar_combate() {
-    local enemigo_nombre="$1"
-    local enemigo_hp="$2"
-    local enemigo_hp_max="$2"
-    local enemigo_atk="$3"
-    local recompensa_xp="$4"
-    local recompensa_oro="$5"
+# Combat System
 
-    while [ "$HP" -gt 0 ] && [ "$enemigo_hp" -gt 0 ]; do
+start_combat() {
+    local enemy_name="$1"
+    local enemy_hp="$2"
+    local enemy_max_hp="$2"
+    local enemy_atk="$3"
+    local xp_reward="$4"
+    local gold_reward="$5"
+
+    while [ "$HP" -gt 0 ] && [ "$enemy_hp" -gt 0 ]; do
         clear
-        echo -e "${ROJO}⚔️  COMBATE: $NOMBRE vs $enemigo_nombre ⚔️${SIN_COLOR}\n"
-        echo -n "$NOMBRE: "
-        mostrar_barra_hp "$HP" "$HP_MAX"
-        echo -e " | Pociones: ${VERDE}$POCIONES${SIN_COLOR}"
+        echo -e "${RED}⚔️  COMBAT: $NAME vs $enemy_name ⚔️${NC}\n"
+        echo -n "$NAME: "
+        show_hp_bar "$HP" "$MAX_HP"
+        echo -e " | Potions: ${GREEN}$POTIONS${NC}"
 
-        echo -n "$enemigo_nombre: "
-        mostrar_barra_hp "$enemigo_hp" "$enemigo_hp_max"
+        echo -n "$enemy_name: "
+        show_hp_bar "$enemy_hp" "$enemy_max_hp"
         echo -e "\n\n----------------------------------------"
-        echo "1. Ataque rápido (Seguro)"
-        echo "2. Golpe pesado (Más daño, puede fallar)"
-        echo "3. Usar poción (+45 HP)"
-        echo "4. Intentar huir"
-        read -rp "Elige tu acción: " accion
+        echo "1. Quick Attack (Reliable)"
+        echo "2. Heavy Strike (High damage, can miss)"
+        echo "3. Use Potion (+45 HP)"
+        echo "4. Attempt to Flee"
+        read -rp "Choose your action: " action
 
         echo ""
-        case "$accion" in
+        case "$action" in
             1)
-                local variacion=$(( RANDOM % 5 - 2 ))
-                local dano=$(( ATAQUE + variacion ))
-                [ $dano -lt 1 ] && dano=1
-                enemigo_hp=$(( enemigo_hp - dano ))
-                echo -e "Atacas con tu $ARMA e infliges ${AMARILLO}$dano de daño${SIN_COLOR}."
+                local variance=$(( RANDOM % 5 - 2 ))
+                local damage=$(( ATTACK + variance ))
+                [ $damage -lt 1 ] && damage=1
+                enemy_hp=$(( enemy_hp - damage ))
+                echo -e "You strike with your $WEAPON and deal ${YELLOW}$damage damage${NC}."
                 ;;
             2)
-                local suerte=$(( RANDOM % 100 ))
-                if [ $suerte -lt 65 ]; then
-                    local dano=$(( ATAQUE * 2 - 2 ))
-                    enemigo_hp=$(( enemigo_hp - dano ))
-                    echo -e "${VERDE}¡Golpe crítico!${SIN_COLOR} Infliges ${AMARILLO}$dano de daño${SIN_COLOR}."
+                local luck=$(( RANDOM % 100 ))
+                if [ $luck -lt 65 ]; then
+                    local damage=$(( ATTACK * 2 - 2 ))
+                    enemy_hp=$(( enemy_hp - damage ))
+                    echo -e "${GREEN}Critical hit!${NC} You deal ${YELLOW}$damage damage${NC}."
                 else
-                    echo -e "${ROJO}¡Fallaste el golpe pesado!${SIN_COLOR}"
+                    echo -e "${RED}You missed your heavy strike!${NC}"
                 fi
                 ;;
             3)
-                if [ "$POCIONES" -gt 0 ]; then
-                    POCIONES=$(( POCIONES - 1 ))
+                if [ "$POTIONS" -gt 0 ]; then
+                    POTIONS=$(( POTIONS - 1 ))
                     HP=$(( HP + 45 ))
-                    [ $HP -gt $HP_MAX ] && HP=$HP_MAX
-                    echo -e "${VERDE}Bebes una poción y recuperas salud.${SIN_COLOR}"
+                    [ $HP -gt $MAX_HP ] && HP=$MAX_HP
+                    echo -e "${GREEN}You drink a potion and recover health.${NC}"
                 else
-                    echo -e "${ROJO}¡No te quedan pociones! Pierdes el turno buscando en tu mochila.${SIN_COLOR}"
+                    echo -e "${RED}No potions left! You waste a turn searching your bag.${NC}"
                 fi
                 ;;
             4)
                 if [ $(( RANDOM % 100 )) -lt 50 ]; then
-                    echo -e "${AZUL}Lograste escapar del combate.${SIN_COLOR}"
-                    pausar
+                    echo -e "${CYAN}You successfully escaped from battle.${NC}"
+                    pause
                     return
                 else
-                    echo -e "${ROJO}¡El enemigo bloqueó tu escape!${SIN_COLOR}"
+                    echo -e "${RED}The enemy blocked your escape!${NC}"
                 fi
                 ;;
             *)
-                echo "Dudaste demasiado y perdiste tu turno."
+                echo "You hesitated and lost your turn."
                 ;;
         esac
 
-        # Turno del enemigo si sigue vivo
-        if [ "$enemigo_hp" -gt 0 ]; then
-            local dano_enemigo=$(( enemigo_atk - DEFENSA + (RANDOM % 4) ))
-            [ $dano_enemigo -lt 1 ] && dano_enemigo=1
-            HP=$(( HP - dano_enemigo ))
-            echo -e "$enemigo_nombre te ataca y recibes ${ROJO}$dano_enemigo de daño${SIN_COLOR}."
+ # Enemy turn if still alive
+
+        if [ "$enemy_hp" -gt 0 ]; then
+            local enemy_damage=$(( enemy_atk - DEFENSE + (RANDOM % 4) ))
+            [ $enemy_damage -lt 1 ] && enemy_damage=1
+            HP=$(( HP - enemy_damage ))
+            echo -e "$enemy_name attacks you for ${RED}$enemy_damage damage${NC}."
         fi
 
         sleep 1.5
@@ -185,202 +183,193 @@ iniciar_combate() {
 
     if [ "$HP" -le 0 ]; then
         clear
-        echo -e "${ROJO}========================================${SIN_COLOR}"
-        echo -e "${ROJO}           HAS SIDO DERROTADO           ${SIN_COLOR}"
-        echo -e "${ROJO}========================================${SIN_COLOR}"
-        echo "Pierdes la mitad de tu oro y despiertas en el campamento..."
-        ORO=$(( ORO / 2 ))
-        HP=$(( HP_MAX / 2 ))
-        pausar
+        echo -e "${RED}========================================${NC}"
+        echo -e "${RED}           YOU HAVE BEEN DEFEATED       ${NC}"
+        echo -e "${RED}========================================${NC}"
+        echo "You lose half your gold and wake up back at camp..."
+        GOLD=$(( GOLD / 2 ))
+        HP=$(( MAX_HP / 2 ))
+        pause
     else
-        echo -e "\n${VERDE}¡Has derrotado a $enemigo_nombre!${SIN_COLOR}"
-        echo "Ganas +$recompensa_xp XP y +$recompensa_oro de Oro."
-        XP=$(( XP + recompensa_xp ))
-        ORO=$(( ORO + recompensa_oro ))
-        subir_nivel
-        pausar
+        echo -e "\n${GREEN}You defeated $enemy_name!${NC}"
+        echo "Earned +$xp_reward XP and +$gold_reward Gold."
+        XP=$(( XP + xp_reward ))
+        GOLD=$(( GOLD + gold_reward ))
+        level_up
+        pause
     fi
 }
 
-# ==========================================
-# Exploración y Eventos Aleatorios
-# ==========================================
-explorar() {
+
+# Exploration & Random Events
+
+explore() {
     clear
-    echo -e "${AZUL}🌲 Explorando el Piso $PISO_MAZORRA...${SIN_COLOR}\n"
+    echo -e "${CYAN}🌲 Exploring Floor $DUNGEON_FLOOR...${NC}\n"
     sleep 1
 
-    local evento=$(( RANDOM % 100 ))
-    local escala=$(( PISO_MAZORRA * 6 ))
+    local event=$(( RANDOM % 100 ))
+    local scaling=$(( DUNGEON_FLOOR * 6 ))
 
-    if [ $evento -lt 55 ]; then
-        # Encuentro con enemigo escalado según el piso
-        local tipo=$(( RANDOM % 3 ))
-        case $tipo in
-            0) iniciar_combate "Slime Ácido" $(( 35 + escala )) $(( 7 + PISO_MAZORRA * 2 )) 35 15 ;;
-            1) iniciar_combate "Esqueleto Guardia" $(( 50 + escala )) $(( 10 + PISO_MAZORRA * 2 )) 50 25 ;;
-            2) iniciar_combate "Lobo Sombrío" $(( 45 + escala )) $(( 12 + PISO_MAZORRA * 2 )) 45 20 ;;
+    if [ $event -lt 55 ]; then
+        local type=$(( RANDOM % 3 ))
+        case $type in
+            0) start_combat "Acid Slime" $(( 35 + scaling )) $(( 7 + DUNGEON_FLOOR * 2 )) 35 15 ;;
+            1) start_combat "Skeleton Guard" $(( 50 + scaling )) $(( 10 + DUNGEON_FLOOR * 2 )) 50 25 ;;
+            2) start_combat "Shadow Wolf" $(( 45 + scaling )) $(( 12 + DUNGEON_FLOOR * 2 )) 45 20 ;;
         esac
-    elif [ $evento -lt 75 ]; then
-        # Cofre del tesoro
-        local oro_encontrado=$(( 15 + RANDOM % 25 + PISO_MAZORRA * 5 ))
-        ORO=$(( ORO + oro_encontrado ))
-        echo -e "${AMARILLO}✨ ¡Encontraste un cofre antiguo!${SIN_COLOR}"
-        echo "Obtienes $oro_encontrado monedas de oro."
-        pausar
-    elif [ $evento -lt 90 ]; then
-        # Fuente curativa
-        local cura=30
-        HP=$(( HP + cura ))
-        [ $HP -gt $HP_MAX ] && HP=$HP_MAX
-        echo -e "${VERDE}💧 Descubres una fuente cristalina.${SIN_COLOR}"
-        echo "Recuperas $cura puntos de salud."
-        pausar
+    elif [ $event -lt 75 ]; then
+        local found_gold=$(( 15 + RANDOM % 25 + DUNGEON_FLOOR * 5 ))
+        GOLD=$(( GOLD + found_gold ))
+        echo -e "${YELLOW}✨ You found an ancient treasure chest!${NC}"
+        echo "You obtain $found_gold gold coins."
+        pause
+    elif [ $event -lt 90 ]; then
+        local heal=30
+        HP=$(( HP + heal ))
+        [ $HP -gt $MAX_HP ] && HP=$MAX_HP
+        echo -e "${GREEN}💧 You discover a crystal healing spring.${NC}"
+        echo "You recover $heal HP."
+        pause
     else
-        # Trampa
-        local dano_trampa=$(( 8 + PISO_MAZORRA * 2 ))
-        HP=$(( HP - dano_trampa ))
+        local trap_damage=$(( 8 + DUNGEON_FLOOR * 2 ))
+        HP=$(( HP - trap_damage ))
         [ $HP -lt 1 ] && HP=1
-        echo -e "${ROJO}⚠️  ¡Pisaste una trampa de pinchos!${SIN_COLOR}"
-        echo "Pierdes $dano_trampa HP."
-        pausar
+        echo -e "${RED}⚠️  You stepped on a spike trap!${NC}"
+        echo "You lose $trap_damage HP."
+        pause
     fi
 }
 
-# ==========================================
-# Tienda y Campamento
-# ==========================================
-visitar_tienda() {
+
+# Shop & Camp
+
+visit_shop() {
     while true; do
         clear
-        echo -e "${AMARILLO}🏪 MERCADER DEL CAMPAMENTO${SIN_COLOR}"
-        echo -e "Tu Oro: ${AMARILLO}$ORO${SIN_COLOR} | Pociones: ${VERDE}$POCIONES${SIN_COLOR}\n"
-        echo "1. Comprar Poción de Salud (20 oro)"
-        echo "2. Mejorar Arma (+5 Ataque) - Costo: 50 oro"
-        echo "3. Mejorar Armadura (+3 Defensa) - Costo: 50 oro"
-        echo "4. Descansar en la posada (Restaura todo el HP) - Costo: 15 oro"
-        echo "5. Volver al menú principal"
-        read -rp "Elige una opción: " op_tienda
+        echo -e "${YELLOW}🏪 CAMP MERCHANT${NC}"
+        echo -e "Your Gold: ${YELLOW}$GOLD${NC} | Potions: ${GREEN}$POTIONS${NC}\n"
+        echo "1. Buy Health Potion (20 gold)"
+        echo "2. Upgrade Weapon (+5 Attack) - Cost: 50 gold"
+        echo "3. Upgrade Armor (+3 Defense) - Cost: 50 gold"
+        echo "4. Rest at the Inn (Full HP restore) - Cost: 15 gold"
+        echo "5. Return to main menu"
+        read -rp "Choose an option: " shop_op
 
-        case "$op_tienda" in
+        case "$shop_op" in
             1)
-                if [ "$ORO" -ge 20 ]; then
-                    ORO=$(( ORO - 20 ))
-                    POCIONES=$(( POCIONES + 1 ))
-                    echo -e "${VERDE}Compraste una poción.${SIN_COLOR}"
+                if [ "$GOLD" -ge 20 ]; then
+                    GOLD=$(( GOLD - 20 ))
+                    POTIONS=$(( POTIONS + 1 ))
+                    echo -e "${GREEN}You bought a health potion.${NC}"
                 else
-                    echo -e "${ROJO}No tienes suficiente oro.${SIN_COLOR}"
+                    echo -e "${RED}Not enough gold.${NC}"
                 fi
                 sleep 1
                 ;;
             2)
-                if [ "$ORO" -ge 50 ]; then
-                    ORO=$(( ORO - 50 ))
-                    ATAQUE=$(( ATAQUE + 5 ))
-                    ARMA="Espada Forjada (+$ATAQUE)"
-                    echo -e "${VERDE}¡Tu ataque aumentó a $ATAQUE!${SIN_COLOR}"
+                if [ "$GOLD" -ge 50 ]; then
+                    GOLD=$(( GOLD - 50 ))
+                    ATTACK=$(( ATTACK + 5 ))
+                    WEAPON="Forged Broadsword (+$ATTACK)"
+                    echo -e "${GREEN}Your attack increased to $ATTACK!${NC}"
                 else
-                    echo -e "${ROJO}No tienes suficiente oro.${SIN_COLOR}"
+                    echo -e "${RED}Not enough gold.${NC}"
                 fi
                 sleep 1
                 ;;
             3)
-                if [ "$ORO" -ge 50 ]; then
-                    ORO=$(( ORO - 50 ))
-                    DEFENSA=$(( DEFENSA + 3 ))
-                    ARMADURA="Cota Reforzada (+$DEFENSA)"
-                    echo -e "${VERDE}¡Tu defensa aumentó a $DEFENSA!${SIN_COLOR}"
+                if [ "$GOLD" -ge 50 ]; then
+                    GOLD=$(( GOLD - 50 ))
+                    DEFENSE=$(( DEFENSE + 3 ))
+                    ARMOR="Reinforced Chainmail (+$DEFENSE)"
+                    echo -e "${GREEN}Your defense increased to $DEFENSE!${NC}"
                 else
-                    echo -e "${ROJO}No tienes suficiente oro.${SIN_COLOR}"
+                    echo -e "${RED}Not enough gold.${NC}"
                 fi
                 sleep 1
                 ;;
             4)
-                if [ "$ORO" -ge 15 ]; then
-                    ORO=$(( ORO - 15 ))
-                    HP=$HP_MAX
-Usa el código con precaución.
-echo -e "${VERDE}Descansaste y recuperaste toda tu salud.${SIN_COLOR}"
-else
-echo -e "${ROJO}No tienes suficiente oro.${SIN_COLOR}"
-fi
-sleep 1
-;;
-5) break ;;
-*) echo "Opción inválida."; sleep 1 ;;
-esac
-done
+                if [ "$GOLD" -ge 15 ]; then
+                    GOLD=$(( GOLD - 15 ))
+                    HP=$MAX_HP
+                    echo -e "${GREEN}You rested and restored all your health.${NC}"
+                else
+                    echo -e "${RED}Not enough gold.${NC}"
+                fi
+                sleep 1
+                ;;
+            5) break ;;
+            *) echo "Invalid option."; sleep 1 ;;
+        esac
+    done
 }
 
-==========================================
-
-
- #Inicio del Juego
-
-
-==========================================
+# Game Start
 
 clear
-echo -e "${MORADO}========================================${SIN_COLOR}"
-echo -e "${MORADO}         TERMINAL QUEST - BASH RPG      ${SIN_COLOR}"
-echo -e "${MORADO}========================================${SIN_COLOR}\n"
-echo "1. Nueva Partida"
-echo "2. Cargar Partida"
-read -rp "Selecciona: " inicio
-if [ "$inicio" == "2" ] && cargar_partida; then
+echo -e "${PURPLE}========================================${NC}"
+echo -e "${PURPLE}         TERMINAL QUEST - BASH RPG      ${NC}"
+echo -e "${PURPLE}========================================${NC}\n"
+echo "1. New Game"
+echo "2. Load Game"
+read -rp "Select: " start_choice
+
+Usa el código con precaución.
+if [ "$start_choice" == "2" ] && load_game; then
 :
 else
-read -rp "Ingresa el nombre de tu héroe: " NOMBRE
-[ -z "$NOMBRE" ] && NOMBRE="Aventurero"
+read -rp "Enter your hero's name: " NAME
+[ -z "$NAME" ] && NAME="Adventurer"
 fi
 
 
 
+Main Game Loop
 
-#ucle Principal
 
 while true; do
 clear
-echo -e "${AZUL}========================================${SIN_COLOR}"
-echo -e " Héroe: ${AMARILLO}$NOMBRE${SIN_COLOR} | Nivel: ${VERDE}$NIVEL${SIN_COLOR} ($XP/$XP_SIGUIENTE XP)"
-echo -n " Salud: "
-mostrar_barra_hp "$HP" "$HP_MAX"
+echo -e "${CYAN}========================================${NC}"
+echo -e " Hero: ${YELLOW}$NAME${NC} | Level: ${GREEN}$LEVEL${NC} ($XP/$NEXT_XP XP)"
+echo -n " Health: "
+show_hp_bar "$HP" "$MAX_HP"
 echo ""
-echo -e " ATK: $ATAQUE | DEF: $DEFENSA | Oro: ${AMARILLO}$ORO${SIN_COLOR} | Piso: $PISO_MAZORRA"
-echo -e "${AZUL}========================================${SIN_COLOR}\n"
-echo "1. Explorar zona actual"
-echo "2. Desafiar al Guardián del Piso (Subir de piso)"
-echo "3. Ir a la Tienda / Posada"
-echo "4. Ver Inventario y Equipo"
-echo "5. Guardar Partida"
-echo "6. Salir"
+echo -e " ATK: $ATTACK | DEF: $DEFENSE | Gold: ${YELLOW}$GOLD${NC} | Floor: $DUNGEON_FLOOR"
+echo -e "${CYAN}========================================${NC}\n"
+echo "1. Explore current floor"
+echo "2. Challenge Floor Guardian (Advance floor)"
+echo "3. Visit Shop / Inn"
+echo "4. View Equipment & Inventory"
+echo "5. Save Game"
+echo "6. Exit"
 echo ""
-read -rp "¿Qué deseas hacer? [1-6]: " menu
+read -rp "What would you like to do? [1-6]: " menu
 case "$menu" in
-1) explorar ;;
+1) explore ;;
 2)
-local_hp_jefe=$(( 90 + PISO_MAZORRA * 35 ))
-local_atk_jefe=$(( 14 + PISO_MAZORRA * 4 ))
-iniciar_combate "Guardián del Piso $PISO_MAZORRA" "$local_hp_jefe" "$local_atk_jefe" $(( 80 * PISO_MAZORRA )) $(( 50 * PISO_MAZORRA ))
+boss_hp=$(( 90 + DUNGEON_FLOOR * 35 ))
+boss_atk=$(( 14 + DUNGEON_FLOOR * 4 ))
+start_combat "Floor $DUNGEON_FLOOR Guardian" "$boss_hp" "$boss_atk" $(( 80 * DUNGEON_FLOOR )) $(( 50 * DUNGEON_FLOOR ))
 if [ "$HP" -gt 0 ]; then
-PISO_MAZORRA=$(( PISO_MAZORRA + 1 ))
-echo -e "${AMARILLO}¡Has desbloqueado el Piso $PISO_MAZORRA!${SIN_COLOR}"
-pausar
+DUNGEON_FLOOR=$(( DUNGEON_FLOOR + 1 ))
+echo -e "${YELLOW}You unlocked Floor $DUNGEON_FLOOR!${NC}"
+pause
 fi
 ;;
-3) visitar_tienda ;;
+3) visit_shop ;;
 4)
 clear
-echo -e "${AZUL}=== EQUIPO E INVENTARIO ===${SIN_COLOR}\n"
-echo "Arma equipada: $ARMA (ATK: $ATAQUE)"
-echo "Armadura equipada: $ARMADURA (DEF: $DEFENSA)"
-echo "Pociones de salud: $POCIONES"
-echo "Monedas de oro: $ORO"
-pausar
+echo -e "${CYAN}=== EQUIPMENT & INVENTORY ===${NC}\n"
+echo "Equipped Weapon: $WEAPON (ATK: $ATTACK)"
+echo "Equipped Armor: $ARMOR (DEF: $DEFENSE)"
+echo "Health Potions: $POTIONS"
+echo "Gold Coins: $GOLD"
+pause
 ;;
-5) guardar_partida; pausar ;;
-6) echo "¡Gracias por jugar!"; exit 0 ;;
-*) echo "Opción inválida."; sleep 1 ;;
+5) save_game; pause ;;
+6) echo "Thanks for playing!"; exit 0 ;;
+*) echo "Invalid option."; sleep 1 ;;
 esac
 done
 
