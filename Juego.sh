@@ -30,7 +30,7 @@ DUNGEON_FLOOR=1
 
 
 # Save & Load System
-
+save_game() {
     cat > "$SAVE_FILE" <<EOF
 NAME="$NAME"
 LEVEL=$LEVEL
