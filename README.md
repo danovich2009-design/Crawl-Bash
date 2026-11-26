@@ -1,4 +1,4 @@
- Terminal Game
+Crawl bash - Terminal game
 
 A turn-based terminal RPG and dungeon crawler written entirely in Bash script, featuring combat mechanics, character progression, an item shop, random events, and a save and load system.
 
